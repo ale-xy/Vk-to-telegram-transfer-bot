@@ -430,11 +430,11 @@ def input_vk():
 			module.vk.account.setOnline()
 
 			# Так надо
-			time.sleep()
+			time.sleep(config.getCell( 'sleepTime' ))
 
 			# Проверка на наличие подписчиков
 			if ( config.getCell('vk_AddFriends') ):
-				checknewfriends(config.getCell( 'sleepTime' ))
+				checknewfriends()
 
 			rawMessages = module.vk.messages.getConversations( filter='unread', count=config.getCell('vk_msgForPick') )['items']
 			if not rawMessages:

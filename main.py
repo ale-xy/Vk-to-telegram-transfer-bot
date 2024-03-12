@@ -8,6 +8,7 @@ import random
 import datetime
 import vk_api
 import telebot
+import telebot.types as types
 import threading
 import urllib.request as ur
 import re
@@ -73,7 +74,6 @@ def getAttachments( msg ):
 		attachment = att[attType]
 
 		if attType == 'photo': # Проверка на тип фотографии
-
 			for photoType in attachment.get('sizes')[0:]:
 				if photoType.get('type') == 'x': # <=604x604
 					attachments = photoType.get('url')
@@ -83,7 +83,6 @@ def getAttachments( msg ):
 					attachments = photoType.get('url')
 				if photoType.get('type') == 'w':# >1280x720
 					attachments = photoType.get('url') # <=2560x1440
-					attType = 'other'
 
 		elif attType == 'doc': # Проверка на тип документа:
 		# Про типы документов можно узнать тут: https://vk.com/dev/objects/doc
@@ -205,30 +204,21 @@ def checkEvents( msg, chatid ):
 
 	else:
 		return None
-	transferMessagesToTelegram( chatid, None, mbody, None, None )
+	transferMessagesToTelegram( chatid, None, mbody, None, None, None )
 	return 'NotNone' # теперь точно не будет отсылать пустые сообщения
 
 # Проверка на наличие перешлённых сообщений
 def getFwdMessages( msg, idd ):
-
 	if not( msg.get( 'fwd_messages' ) ):
 		return None # И так сойдёт
 
 	fwdList = []
 	fwdMsg = msg.get( 'fwd_messages' )
-
-	while not fwdMsg is None:
-
-		userName = getUserName( fwdMsg[0] )
-
-		fwdList.append( { 'body':fwdMsg[0].get( 'text' ), 'userName':userName } )
-
-		checkAttachments( fwdMsg[0], idd )
-
-		fwdMsg = fwdMsg[0].get( 'fwd_messages' )
-
-	#print( fwdList )
-
+	for f in fwdMsg:
+		userName = getUserName( f )
+		fwdList.append( { 'id':str(f.get( 'conversation_message_id' )), 'body':f.get( 'text' ), 'userName':userName } )
+		
+		checkAttachments( f, idd )
 	return fwdList
     
 def getReplyMessage( msg, idd ):
@@ -236,46 +226,8 @@ def getReplyMessage( msg, idd ):
 	if not( msg.get( 'reply_message' ) ):
 		return None
         
-	replyList = []
-    
-	replyMsg = msg.get( 'reply_message' )
-	replyMsgText = ''
-	if replyMsg.get( 'text' ) == '':
-		for att in msg['reply_message']['attachments'][0:]:
-			attType = att.get( 'type' )
-			attachment = att[attType]
-			if attType == 'photo':
-				replyMsgText = 'Фотография'
-			elif attType == 'doc':
-				replyMsgText = 'Документ'
-			elif attType == 'sticker': 
-				replyMsgText = 'Стикер'
-			elif attType == 'audio':
-				replyMsgText = 'Аудио'
-			elif attType == 'audio_message':
-				replyMsgText = 'Голосовое сообщение'
-			elif attType == 'video':
-				replyMsgText = 'Видеосообщение'
-			elif attType == 'graffiti':
-				replyMsgText = 'Граффити'
-			elif attType == 'link':
-				replyMsgText = 'Ссылка'
-			elif attType == 'wall':
-				replyMsgText = 'Запись с стены'
-			elif attType == 'wall_reply':
-				replyMsgText = 'что это такое'
-			elif attType == 'poll':
-				replyMsgText = 'Опрос'
-	else:
-		replyMsgText = replyMsg.get( 'text' )
-	userName = getUserName( replyMsg )
-	replyList.append( userName )
-	replyList.append( replyMsgText ) # И так сойдёт x2
-
-	return replyList
-
-	
-    
+	replyId = str(msg.get( 'reply_message' ).get( 'conversation_message_id' ))
+	return replyId
 #    _____          _ _               _       
 #   |  __ \        | (_)             | |      
 #   | |__) |___  __| |_ _ __ ___  ___| |_ ___ 
@@ -293,12 +245,13 @@ def checkRedirect_vk( msg ):
 
 		forwardMessage = getFwdMessages( msg['last_message'], chatid )
 		replyMessage = getReplyMessage( msg['last_message'], chatid )
+		messageId = str(msg['last_message'].get( 'conversation_message_id' ))
 		userName = getUserName( msg['last_message'] )
 		mbody = msg['last_message'].get( 'text' )
 		# Чтобы при событии не посылалось пустое сообщение
 		
 		if checkEvents( msg, chatid ) is None:
-			transferMessagesToTelegram( chatid, userName, mbody, forwardMessage, replyMessage )
+			transferMessagesToTelegram( chatid, userName, mbody, forwardMessage, replyMessage, messageId )
 			
 		# Проверка на аттачменты, пересланные сообщения, видео...
 		# Проверка сделана, чтобы исключить повтор картинки
@@ -352,7 +305,7 @@ def checkRedirect_telegram( chatid, text, fromUser, attachment ):
 
 # Посылаем простые сообщения в Telegram
 # Идея: сделать в будущем наклонные столбики, теперь главное не забыть
-def transferMessagesToTelegram( idd, userName, mbody, fwdList, replyList ):
+def transferMessagesToTelegram( idd, userName, mbody, fwdList, replyId, msgId ):
 
 	# Условие выполняется в случае какого-либо события
 	if userName is None:
@@ -361,19 +314,18 @@ def transferMessagesToTelegram( idd, userName, mbody, fwdList, replyList ):
 		return False
 
 	time = current_time()
-	niceText = str( time + ' | ' + userName + ': ' + mbody )
+	niceText = str( time + ' | #msg' + msgId + ' | ' + userName + ': ' + mbody )
 
 	if not fwdList is None:
 
 		forwardText = ''
-
-		for f in fwdList[0:]:
-			forwardText = forwardText + str( ' | ' + f.get( 'userName' ) + ':' + ' ' + f.get( 'body' ) + ' \n\n' )
+		for f in fwdList:
+			forwardText = forwardText + str( '#msg' + f.get('id') + ' | ' + f.get( 'userName' ) + ':' + ' ' + f.get( 'body' ) + ' \n\n' )
 		module.bot.send_message( config.getCell( 'vk_' + idd ), niceText + '\n\n' + forwardText )
 
 	else:
-		if not replyList is None:
-			replyText = str( 'В ответ на:\n' + replyList[0] + ':' + ' ' + replyList[1])
+		if not replyId is None:
+			replyText = str( 'В ответ на #msg' + replyId + ':')
 			module.bot.send_message( config.getCell( 'vk_' + idd ), replyText + '\n\n' + niceText )
 		else:
 			
@@ -382,7 +334,6 @@ def transferMessagesToTelegram( idd, userName, mbody, fwdList, replyList ):
 # И так сойдёт
 def getVideoDirectLink(link):
 	pattern = r'url480[^\,]+'
-
 	response = ur.urlopen(link)
 	html = response.read().decode(response.headers.get_content_charset())
 	directLink = re.search(pattern, html).group(0)[9:-1].replace("\\/", "/")
@@ -391,13 +342,15 @@ def getVideoDirectLink(link):
 
 # Посылаем аттачменты в Telegram
 def transferAttachmentsToTelegram ( idd, attachments ):
+	photos = []
 	for j in attachments[0:]:
 
 		attType = j.get( 'type' )
 		link = j.get( 'link' )
-
+		
 		if attType == 'photo' or attType == 'sticker':
-			module.bot.send_photo( config.getCell( 'vk_' + idd ), link )
+			photo = types.InputMediaPhoto(link)
+			photos.append(photo)
 
 		elif attType == 'doc' or attType == 'gif' or attType == 'audio_message':
 			module.bot.send_document( config.getCell( 'vk_' + idd ), link)
@@ -408,16 +361,21 @@ def transferAttachmentsToTelegram ( idd, attachments ):
 		elif attType == 'video':
 
 			# Потому что в ВК не может отправить полную ссылку на файл видео -_-
-			direct_link = getVideoDirectLink(link) # может если дать пинок костылём под жопу
-			response = ur.urlopen(direct_link)
-			if response.getcode() == 200:
-				videoMessage = response.read()
-				module.bot.send_video_note( config.getCell( 'vk_' + idd ), videoMessage)
-			else:
+			try:
+				direct_link = getVideoDirectLink(link) # может если дать пинок костылём под жопу
+				response = ur.urlopen(direct_link)
+				if response.getcode() == 200:
+					videoMessage = response.read()
+					module.bot.send_video_note( config.getCell( 'vk_' + idd ), videoMessage)
+				else:
+					module.bot.send_message( config.getCell( 'vk_' + idd ), direct_link )
+			except:
 				module.bot.send_message( config.getCell( 'vk_' + idd ), direct_link )
 			
 		else:
 			module.bot.send_message( config.getCell( 'vk_' + idd ), '( Неизвестный тип аттачмента )' )
+	if photos != []:
+		module.bot.send_media_group( config.getCell( 'vk_' + idd ), photos ) 
 
 #   __      ___    
 #   \ \    / / |   

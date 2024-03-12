@@ -56,7 +56,6 @@ def getUserTName( msg ):
 
 # Проверка на наличие аттачментов в сообщении
 def checkAttachments( msg, idd ):
-	print(msg)
 	if not( msg.get( 'attachments' ) ):
 		return False
 	transferAttachmentsToTelegram( idd, getAttachments( msg ) )
@@ -392,7 +391,6 @@ def getVideoDirectLink(link):
 
 # Посылаем аттачменты в Telegram
 def transferAttachmentsToTelegram ( idd, attachments ):
-	print(attachments)
 	for j in attachments[0:]:
 
 		attType = j.get( 'type' )

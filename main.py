@@ -370,7 +370,7 @@ def transferAttachmentsToTelegram ( idd, attachments ):
 				else:
 					module.bot.send_message( config.getCell( 'vk_' + idd ), direct_link )
 			except:
-				module.bot.send_message( config.getCell( 'vk_' + idd ), direct_link )
+				module.bot.send_message( config.getCell( 'vk_' + idd ), link )
 			
 		else:
 			module.bot.send_message( config.getCell( 'vk_' + idd ), '( Неизвестный тип аттачмента )' )

@@ -10,6 +10,7 @@ import vk_api
 import telebot
 import threading
 import urllib.request as ur
+import re
 from PIL import Image # Для преобразования изображений из webp в PNG
 
 config.initConfig()
@@ -55,6 +56,7 @@ def getUserTName( msg ):
 
 # Проверка на наличие аттачментов в сообщении
 def checkAttachments( msg, idd ):
+	print(msg)
 	if not( msg.get( 'attachments' ) ):
 		return False
 	transferAttachmentsToTelegram( idd, getAttachments( msg ) )
@@ -378,9 +380,19 @@ def transferMessagesToTelegram( idd, userName, mbody, fwdList, replyList ):
 			
 			module.bot.send_message( config.getCell( 'vk_' + idd ), niceText )
 
+# И так сойдёт
+def getVideoDirectLink(link):
+	pattern = r'url480[^\,]+'
+
+	response = ur.urlopen(link)
+	html = response.read().decode(response.headers.get_content_charset())
+	directLink = re.search(pattern, html).group(0)[9:-1].replace("\\/", "/")
+
+	return directLink
+
 # Посылаем аттачменты в Telegram
 def transferAttachmentsToTelegram ( idd, attachments ):
-
+	print(attachments)
 	for j in attachments[0:]:
 
 		attType = j.get( 'type' )
@@ -398,8 +410,14 @@ def transferAttachmentsToTelegram ( idd, attachments ):
 		elif attType == 'video':
 
 			# Потому что в ВК не может отправить полную ссылку на файл видео -_-
-			module.bot.send_message( config.getCell( 'vk_' + idd ), link )
-
+			direct_link = getVideoDirectLink(link) # может если дать пинок костылём под жопу
+			response = ur.urlopen(direct_link)
+			if response.getcode() == 200:
+				videoMessage = response.read()
+				module.bot.send_video_note( config.getCell( 'vk_' + idd ), videoMessage)
+			else:
+				module.bot.send_message( config.getCell( 'vk_' + idd ), direct_link )
+			
 		else:
 			module.bot.send_message( config.getCell( 'vk_' + idd ), '( Неизвестный тип аттачмента )' )
 

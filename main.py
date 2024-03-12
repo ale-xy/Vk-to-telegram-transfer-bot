@@ -12,6 +12,7 @@ import telebot.types as types
 import threading
 import urllib.request as ur
 import re
+import time
 from PIL import Image # Для преобразования изображений из webp в PNG
 
 config.initConfig()
@@ -427,11 +428,13 @@ def input_vk():
 		try:
 			#Ставим онлайн боту, чому бы и нет?
 			module.vk.account.setOnline()
-            
+
+			# Так надо
+			time.sleep()
 
 			# Проверка на наличие подписчиков
 			if ( config.getCell('vk_AddFriends') ):
-				checknewfriends()
+				checknewfriends(config.getCell( 'sleepTime' ))
 
 			rawMessages = module.vk.messages.getConversations( filter='unread', count=config.getCell('vk_msgForPick') )['items']
 			if not rawMessages:

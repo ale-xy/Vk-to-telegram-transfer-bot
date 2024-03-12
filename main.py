@@ -368,7 +368,7 @@ def transferMessagesToTelegram( idd, userName, mbody, fwdList, replyList ):
 
 		for f in fwdList[0:]:
 			forwardText = forwardText + str( ' | ' + f.get( 'userName' ) + ':' + ' ' + f.get( 'body' ) + ' \n\n' )
-			module.bot.send_message( config.getCell( 'vk_' + idd ), niceText + '\n\n' + forwardText )
+		module.bot.send_message( config.getCell( 'vk_' + idd ), niceText + '\n\n' + forwardText )
 
 	else:
 		if not replyList is None:

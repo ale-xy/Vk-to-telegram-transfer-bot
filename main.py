@@ -333,25 +333,31 @@ def transferMessagesToTelegram( idd, userName, mbody, fwdList, replyId, msgId ):
 			module.bot.send_message( config.getCell( 'vk_' + idd ), niceText )
 
 # И так сойдёт
-def getVideoDirectLink(link):
-	pattern = r'url480[^\,]+'
-	response = ur.urlopen(link)
-	html = response.read().decode(response.headers.get_content_charset())
-	directLink = re.search(pattern, html).group(0)[9:-1].replace("\\/", "/")
+def getVideoDirectLink(link, type):
+	if type == 'videomessage':
+		pattern = r'url480[^\,]+'
+		response = ur.urlopen(link)
+		html = response.read().decode(response.headers.get_content_charset())
+		directLink = re.search(pattern, html).group(0)[9:-1].replace("\\/", "/")
+	if type == 'video':
+		pattern = r'url720[^\,]+'
+		response = ur.urlopen(link)
+		html = response.read().decode(response.headers.get_content_charset())
+		directLink = re.search(pattern, html).group(0)[9:-1].replace("\\/", "/")
 
 	return directLink
 
 # Посылаем аттачменты в Telegram
 def transferAttachmentsToTelegram ( idd, attachments ):
-	photos = []
+	mediagr = []
 	for j in attachments[0:]:
 
 		attType = j.get( 'type' )
 		link = j.get( 'link' )
 		
 		if attType == 'photo' or attType == 'sticker':
-			photo = types.InputMediaPhoto(link)
-			photos.append(photo)
+			media = types.InputMediaPhoto(link)
+			mediagr.append(media)
 
 		elif attType == 'doc' or attType == 'gif' or attType == 'audio_message':
 			module.bot.send_document( config.getCell( 'vk_' + idd ), link)
@@ -363,7 +369,8 @@ def transferAttachmentsToTelegram ( idd, attachments ):
 
 			# Потому что в ВК не может отправить полную ссылку на файл видео -_-
 			try:
-				direct_link = getVideoDirectLink(link) # может если дать пинок костылём под жопу
+				# может если дать пинок костылём под жопу
+				direct_link = getVideoDirectLink(link, 'videomessage') 
 				response = ur.urlopen(direct_link)
 				if response.getcode() == 200:
 					videoMessage = response.read()
@@ -371,12 +378,15 @@ def transferAttachmentsToTelegram ( idd, attachments ):
 				else:
 					module.bot.send_message( config.getCell( 'vk_' + idd ), direct_link )
 			except:
-				module.bot.send_message( config.getCell( 'vk_' + idd ), link )
+				direct_link = getVideoDirectLink(link, 'video') 
+				media = types.InputMediaVideo(direct_link)
+				mediagr.append(media)
+				# на этом моменте я поставил этой функции свечку за здравие, ну а вдруг
 			
 		else:
 			module.bot.send_message( config.getCell( 'vk_' + idd ), '( Неизвестный тип аттачмента )' )
-	if photos != []:
-		module.bot.send_media_group( config.getCell( 'vk_' + idd ), photos ) 
+	if mediagr != []:
+		module.bot.send_media_group( config.getCell( 'vk_' + idd ), mediagr ) 
 
 #   __      ___    
 #   \ \    / / |   
@@ -423,6 +433,7 @@ def init_vk():
 	input_vk()
 
 def input_vk():
+	last_message = 1
 	while True:
 
 		try:
@@ -435,14 +446,17 @@ def input_vk():
 			# Проверка на наличие подписчиков
 			if ( config.getCell('vk_AddFriends') ):
 				checknewfriends()
-
-			rawMessages = module.vk.messages.getConversations( filter='unread', count=config.getCell('vk_msgForPick') )['items']
+			rawMessages = module.vk.messages.getConversations( filter='unread' )['items']
 			if not rawMessages:
 				continue
-			
 			msg = rawMessages[0]['conversation']['peer']
-			if checkRedirect_vk( rawMessages[0] ) or config.getCell('vk_markAsReadEverything'):
-				module.vk.messages.markAsRead( messages_ids = msg['local_id'], peer_id = msg['id'] )
+			if last_message != int(rawMessages[0]['conversation'].get('last_message_id')):
+				if checkRedirect_vk( rawMessages[0] ):
+					last_message = int(rawMessages[0]['conversation'].get('last_message_id')) 
+				if config.getCell('vk_markAsReadEverything'):
+					module.vk.messages.markAsRead( messages_ids = msg['local_id'], peer_id = msg['id'] )
+			else:
+				pass
 
 
 		# Чтобы не вылетало, а работало дальше

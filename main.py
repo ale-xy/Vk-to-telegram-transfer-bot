@@ -10,6 +10,7 @@ import vk_api
 import telebot
 import telebot.types as types
 import threading
+import traceback
 import urllib.request as ur
 import re
 import time
@@ -416,17 +417,20 @@ def init_vk():
 	login = config.getCell( 'vk_login' )
 	password = config.getCell( 'vk_password' )
 	app = config.getCell( 'app_id' )
+	token = config.getCell( 'vk_token' )
 
 	print( "login in vk as: " + login )
+	print ( "token " + token )
 
 	global vk_session
 
-	vk_session = vk_api.VkApi( login, password, app_id=app, auth_handler=auth_handler, captcha_handler=captcha_handler )
+	vk_session = vk_api.VkApi( login, app_id=app, token=token, auth_handler=auth_handler, captcha_handler=captcha_handler )
 
-	try:
-		vk_session.auth()
-	except vk_api.AuthError as error_msg:
-		print( error_msg )
+#	try:
+#		vk_session.auth(token_only=True)
+#	except vk_api.AuthError as error_msg:
+#		print( error_msg )
+#		print(traceback.format_exc())
 
 	module.vk = vk_session.get_api() # Важная штука
 
@@ -462,6 +466,7 @@ def input_vk():
 		# Чтобы не вылетало, а работало дальше
 		except BaseException as e:
 			print(e)
+			print(traceback.format_exc())
 			print( 'Что-то пошло не так...' )
 			continue
 

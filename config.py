@@ -24,13 +24,14 @@ def initConfig():
 
 	setCell( "vk_AddFriends", False ) # Автоматически добавлять новых пользователей в друзья?
 	setCell( "vk_markAsReadEverything", False) # Помечать прочитанными все сообщения?
-	setCell( "vk_login", "78005553535" ) # Логин от аккаунта ВК
-	setCell( "vk_password", "Password" ) # Пароль от аккаунта ВК
+	setCell( "vk_login", "79052202853" ) # Логин от аккаунта ВК
+	setCell( "vk_password", "Robat-bobat-GMA1" ) # Пароль от аккаунта ВК
 
 	setCell( "app_id", 2685278 ) # Приложение, у которого есть доступ взаимодействовать с ВК
-	setCell( "telegram_token", "12345678:ABcDeFgHeVzS-6543-dWEdGAJ1234" ) # Токен ботинка в Telegram
+	setCell( "vk_token", "vk1.a.B11lvGElt_L9c24nCaP0yOFGyH22C6UePk7Sc7V2nf6ZhdVu0cM4Mz-BshFAB4-Dhe6zgHk_DK38q-4XoNGaV_odpdKv-uiFA05X40nDHK98PkRZ-NfJLxJsswXVz5uaQLBj2DhlECBkL_Nztx8AHyVHWj7e3PIBr1j-IbvP-Pe3JxiUoy6PaELycYJd5MuFm9gDJA4ce34ld2blYAi0Lg" ) # VK Token
+	setCell( "telegram_token", "8170450941:AAH3HUowL20f9q7IP_DHi-ZWjcbNY3myiCM" ) # Токен ботинка в Telegram
 
-	setCell( "telegram_SendName", False ) # Отправлять в ВК текст с именем отправителя из Telegram
+	setCell( "telegram_SendName", True ) # Отправлять в ВК текст с именем отправителя из Telegram
 
 	#############################################################
 	########                                             ########
@@ -75,11 +76,11 @@ def initConfig():
 	########                                             ########
 	#############################################################
 
-	setCell( "vk_417110104", '-236472090' ) # Пример переадресации ЛС ВК в Telegram
-	setCell( "t_-236472090", '417110104' ) # Пример переадресации ЛС ВК в Telegram
+	setCell( "vk_30168429", '-1002256368797' ) # Пример переадресации ЛС ВК в Telegram
+	setCell( "t_-1002256368797", '30168429' ) # Пример переадресации ЛС ВК в Telegram
 
-	setCell( "vk_1", '-249416176' ) # Пример переадресации из чата ВК в Telegram
-	setCell( "t_-249416176", '1' ) # Пример переадресации из чата ВК в Telegram
+	setCell( "vk_1", '-1002291884034' ) # Пример переадресации из чата ВК в Telegram
+	setCell( "t_-1002291884034", '1' ) # Пример переадресации из чата ВК в Telegram
 	# P.S. В нашем случае 1 - 'локальный' ID чата для аккаунта ВК
 	
 	# P.S.S. Не забываем изменить/удалить примеры, а то может что-то пойти не так...

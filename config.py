@@ -78,7 +78,7 @@ def initConfig():
     setCell("vk_30168429", '-1002256368797')  # test group 1
     setCell("t_-1002256368797", '30168429')
 
-    setCell("vk_30168429", '-1002339090255')  # test gorup 2
+    setCell("vk_30168429", '-1002339090255')  # test group 2
     setCell("t_-1002339090255", '30168429')
 
     setCell("vk_1", '-1002291884034')  # gma

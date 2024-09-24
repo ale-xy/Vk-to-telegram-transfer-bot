@@ -236,6 +236,8 @@ def getReplyMessage(msg, idd):
     if not (msg.get('reply_message')):
         return None
 
+    print(f"getReplyMessage {msg.get('reply_message')}")
+
     replyId = str(msg.get('reply_message').get('conversation_message_id'))
     return replyId
 
@@ -257,7 +259,7 @@ def checkRedirect_vk(msg):
     if not config.getCell("vk_" + chatid) is None:
 
         forwardMessage = getFwdMessages(msg['last_message'], chatid)
-        replyMessage = getReplyMessage(msg['last_message'], chatid)
+        replyMessage = get_reply(msg['last_message'])
         messageId = str(msg['last_message'].get('conversation_message_id'))
         userName = getUserName(msg['last_message'])
         mbody = msg['last_message'].get('text')
@@ -273,6 +275,17 @@ def checkRedirect_vk(msg):
 
         return True
     return False
+
+
+def get_reply(message_data):
+    try:
+        replier = module.vk.users.get(user_ids=message_data['reply_message']["from_id"])[0]
+        print(f"Reply: {replier['first_name']} {replier['last_name']}: {message_data['reply_message']['text']}")
+        return f"<blockquote><b>{replier['first_name']} {replier['last_name']}</b>: {message_data['reply_message']['text']}</blockquote>"
+    except Exception as e:
+        # print(e)
+        # print(traceback.format_exc())
+        return None
 
 
 def transferMessageToVK(chatid, text, fromUser, attachment):
@@ -324,7 +337,7 @@ def checkRedirect_telegram(chatid, text, fromUser, attachment):
 
 # Посылаем простые сообщения в Telegram
 # Идея: сделать в будущем наклонные столбики, теперь главное не забыть
-def transferMessagesToTelegram(idd, userName, mbody, fwdList, replyId, msgId):
+def transferMessagesToTelegram(idd, userName, mbody, fwdList, replyText, msgId):
     print("transferMessagesToTelegram " + mbody)
 
     # Условие выполняется в случае какого-либо события
@@ -334,23 +347,28 @@ def transferMessagesToTelegram(idd, userName, mbody, fwdList, replyId, msgId):
         return False
 
     time = current_time()
-    niceText = str(time + ' | #msg' + msgId + ' | ' + userName + ': ' + mbody)
+
+    timeText = f"<b>{userName}</b> <i>{time}</i>:"
+    # niceText = str(time + ' | #msg' + msgId + ' | ' + userName + ': ' + mbody)
 
     if not fwdList is None:
-
         forwardText = ''
         for f in fwdList:
-            forwardText = forwardText + str(
-                '#msg' + f.get('id') + ' | ' + f.get('userName') + ':' + ' ' + f.get('body') + ' \n\n')
-        module.bot.send_message(config.getCell('vk_' + idd), niceText + '\n\n' + forwardText)
+            forwardText = forwardText + f"<blockquote><b>{f.get('userName')}</b>: {f.get('body')}</blockquote>\n"
+
+        module.bot.send_message(config.getCell('vk_' + idd),
+                                f"{timeText}\n\n{mbody}\n\n{forwardText}",
+                                parse_mode="HTML")
 
     else:
-        if not replyId is None:
-            replyText = str('В ответ на #msg' + replyId + ':')
-            module.bot.send_message(config.getCell('vk_' + idd), replyText + '\n\n' + niceText)
+        if not replyText is None:
+            module.bot.send_message(config.getCell('vk_' + idd),
+                                    f"{timeText}\n\n{replyText}\n{mbody}",
+                                    parse_mode="HTML")
         else:
-
-            module.bot.send_message(config.getCell('vk_' + idd), niceText)
+            module.bot.send_message(config.getCell('vk_' + idd),
+                                    f"{timeText}\n\n{mbody}",
+                                    parse_mode="HTML")
 
 
 # И так сойдёт
@@ -443,7 +461,7 @@ def init_vk():
     token = vk_token
 
     print("login in vk as: " + login)
-    print("token " + token)
+    # print("token " + token)
 
     global vk_session
 

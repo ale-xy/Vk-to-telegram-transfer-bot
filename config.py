@@ -31,9 +31,6 @@ def initConfig():
 
     setCell("app_id", 2685278)  # Приложение, у которого есть доступ взаимодействовать с ВК
 
-    setCell("telegram_token", "8170450941:AAH3HUowL20f9q7IP_DHi-ZWjcbNY3myiCM")  # prod
-    # setCell("telegram_token", "7659932995:AAEuWxXPMJhBgB8mvoWEZ9OmZSUdXGYE2o0")  # test
-
     setCell("telegram_SendName", True)  # Отправлять в ВК текст с именем отправителя из Telegram
 
     #############################################################

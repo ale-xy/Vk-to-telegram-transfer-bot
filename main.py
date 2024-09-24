@@ -15,6 +15,7 @@ import urllib.request as ur
 import re
 import time
 from vk_token import vk_token
+from vk_token import tg_token
 from PIL import Image  # Для преобразования изображений из webp в PNG
 
 config.initConfig()
@@ -297,7 +298,7 @@ def transferMessageToVK(chatid, text, fromUser, attachment):
 
         # Если стикер не найден в БД
         if getSticker is None:
-            stickerURL = 'https://api.telegram.org/file/bot{0}/{1}'.format(config.getCell('telegram_token'), attachment)
+            stickerURL = 'https://api.telegram.org/file/bot{0}/{1}'.format(tg_token, attachment)
             saveSticker(stickerURL, attachment)
             getSticker = db.checkSticker(attachment)
 
@@ -530,7 +531,7 @@ def listener(messages):
 
 
 def init_telegram():
-    module.bot = telebot.TeleBot(config.getCell('telegram_token'))
+    module.bot = telebot.TeleBot(tg_token)
     print("Successfully loginned in telegram!")
     input_telegram()
 

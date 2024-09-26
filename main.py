@@ -342,7 +342,9 @@ def check_redirect_telegram_to_vk(message, attachment):
     print("checkRedirect_telegram " + text)
 
     if config.getCell('t_' + chatId) is not None:
-        if config.getCell('telegram_SendOnlyFromMainTopic') and message.chat.is_forum and message.is_topic_message:
+        if config.getCell('telegram_SendOnlyFromMainTopic') and \
+                getattr(message.chat, 'is_forum', False) and \
+                getattr(message, 'is_topic_message', False):
             print("Not main topic, skip")
             return False
 

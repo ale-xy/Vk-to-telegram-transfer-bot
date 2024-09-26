@@ -39,7 +39,7 @@ module = sys.modules[__name__]
 def current_time():
     delta = datetime.timedelta(hours=3)
     utc = datetime.timezone.utc
-    fmt = '%H:%M:%S'
+    fmt = '%H:%M'
     time = (datetime.datetime.now(utc) + delta)
     timestr = time.strftime(fmt)
     return timestr
@@ -157,7 +157,6 @@ def getAttachments(msg):
             attachments += owner_id + '_' + poll_id
         # Неизвестный тип?
         else:
-
             attachments = None
 
         attachList.append({'type': attType,
@@ -294,7 +293,7 @@ def send_to_vk(chatid, text, fromUser, attachment):
 
     if config.getCell('telegram_SendName'):
         time = current_time()
-        text = str(time + ' | ' + fromUser + ': ' + text)
+        text = f'[{time} | {fromUser}]\n{text}'
 
     randid = random.randint(-9223372036854775808, +9223372036854775807)  # int64
 
@@ -305,7 +304,7 @@ def send_to_vk(chatid, text, fromUser, attachment):
         try:
             module.vk.messages.send(chat_id=config.getCell('t_' + chatid), message=text, random_id=randid)
         except vk_api.ApiError as error_msg:
-            print(error_msg)
+            print(f'vk api error {error_msg}')
             module.vk.messages.send(user_id=config.getCell('t_' + chatid), message=text, random_id=randid)
 
     else:
@@ -315,7 +314,7 @@ def send_to_vk(chatid, text, fromUser, attachment):
                                     attachment=upload_photo_vk(attachment),
                                     random_id=randid)
         except vk_api.ApiError as error_msg:
-            print(error_msg)
+            print(f'vk api error {error_msg}')
             module.vk.messages.send(user_id=config.getCell('t_' + chatid),
                                     message=text,
                                     attachment=upload_photo_vk(attachment),
@@ -336,14 +335,20 @@ def upload_photo_vk(photo):
 
 def check_redirect_telegram_to_vk(message, attachment):
     chatId = str(message.chat.id)
-    text = message.text
     fromUser = getUserTName(message.from_user)
+
+    reply_name, reply_text = get_reply_telegram(message)
+
+    print(f'reply {reply_name} {reply_text}')
+
+    if reply_text is None:
+        text = message.text
+    else:
+        text = f'>>>>>> {reply_name} <<\n{reply_text}\n>>>>>> \n{message.text}'
 
     print("checkRedirect_telegram " + text)
 
     if config.getCell('t_' + chatId) is not None:
-        print(f"{config.getCell('telegram_SendOnlyFromMainTopic')} {getattr(message.chat, 'is_forum', False)} {getattr(message, 'is_topic_message', False)}")
-
         if config.getCell('telegram_SendOnlyFromMainTopic') and \
                 getattr(message.chat, 'is_forum', False) and \
                 getattr(message, 'is_topic_message', False):
@@ -363,6 +368,23 @@ def check_redirect_telegram_to_vk(message, attachment):
             os.remove(attachment)
 
     return False
+
+
+def get_reply_telegram(message):
+    if message.reply_to_message is None:
+        print('no reply_to_message')
+        return None, None
+
+    reply_message = message.reply_to_message
+    if reply_message.forum_topic_created is not None:
+        print(f'forum_topic_created {reply_message.forum_topic_created}')
+        # todo remember topic
+        return None, None
+
+    name = getUserTName(reply_message.from_user)
+    text = reply_message.text
+
+    return name, text
 
 
 # Посылаем простые сообщения в Telegram
@@ -389,14 +411,14 @@ def send_to_telegram(vk_chat_id, userName, mbody, fwdList, replyText):
             forwardText = forwardText + f"<blockquote><b>{f.get('userName')}</b>: {f.get('body')}</blockquote>\n"
 
         module.bot.send_message(tg_id,
-                                f"{timeText}\n\n{mbody}\n\n{forwardText}",
+                                f"{timeText}\n{mbody}\n{forwardText}",
                                 message_thread_id=tg_topic,
                                 parse_mode="HTML")
 
     else:
         if replyText is not None:
             module.bot.send_message(tg_id,
-                                    f"{timeText}\n\n{replyText}\n{mbody}",
+                                    f"{timeText}\n{replyText}\n{mbody}",
                                     message_thread_id=tg_topic,
                                     parse_mode="HTML")
         else:
@@ -422,9 +444,11 @@ def getVideoDirectLink(link, type):
     return directLink
 
 
-# Посылаем аттачменты в Telegram
 def transferAttachmentsToTelegram(idd, attachments):
     mediagr = []
+    tg_id = config.getCell('vk_' + idd)
+    tg_topic = config.getCell(f'topic_{tg_id}')
+
     for j in attachments[0:]:
 
         attType = j.get('type')
@@ -435,10 +459,10 @@ def transferAttachmentsToTelegram(idd, attachments):
             mediagr.append(media)
 
         elif attType == 'doc' or attType == 'gif' or attType == 'audio_message':
-            module.bot.send_document(config.getCell('vk_' + idd), link)
+            module.bot.send_document(tg_id, link, message_thread_id=tg_topic)
 
         elif attType == 'other':
-            module.bot.send_message(config.getCell('vk_' + idd), link)
+            module.bot.send_message(tg_id, link, message_thread_id=tg_topic)
 
         elif attType == 'video':
 
@@ -449,9 +473,9 @@ def transferAttachmentsToTelegram(idd, attachments):
                 response = ur.urlopen(direct_link)
                 if response.getcode() == 200:
                     videoMessage = response.read()
-                    module.bot.send_video_note(config.getCell('vk_' + idd), videoMessage)
+                    module.bot.send_video_note(tg_id, videoMessage, message_thread_id=tg_topic)
                 else:
-                    module.bot.send_message(config.getCell('vk_' + idd), direct_link)
+                    module.bot.send_message(tg_id, direct_link, message_thread_id=tg_topic)
             except:
                 direct_link = getVideoDirectLink(link, 'video')
                 media = types.InputMediaVideo(direct_link)
@@ -459,13 +483,11 @@ def transferAttachmentsToTelegram(idd, attachments):
             # на этом моменте я поставил этой функции свечку за здравие, ну а вдруг
 
         else:
-            module.bot.send_message(config.getCell('vk_' + idd), '( Неизвестный тип аттачмента )')
-    if mediagr != []:
-        module.bot.send_media_group(config.getCell('vk_' + idd), mediagr)
+            module.bot.send_message(tg_id, f'(Тут был {attType}, но мы его не умеем)', message_thread_id=tg_topic)
+    if mediagr:
+        module.bot.send_media_group(tg_id, mediagr, message_thread_id=tg_topic)
 
-    #   __      ___
-
-
+#   __      ___
 #   \ \    / / |
 #    \ \  / /| | __
 #     \ \/ / | |/ /
@@ -473,6 +495,7 @@ def transferAttachmentsToTelegram(idd, attachments):
 #       \/   |_|\_\
 #                  
 #
+
 
 # При двухфакторной аутентификации вызывается эта функция
 def auth_handler():

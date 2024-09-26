@@ -75,7 +75,7 @@ def initConfig():
     ########                                             ########
     #############################################################
 
-    setCell("telegram_SendOnlyFromMainTopic", True)
+    setCell("telegram_SendOnlyFromMainTopic", False)
 
     setCell("vk_30168429", '-1002256368797')  # test group 1
     setCell("t_-1002256368797", '30168429')

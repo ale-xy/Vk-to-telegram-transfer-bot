@@ -342,6 +342,8 @@ def check_redirect_telegram_to_vk(message, attachment):
     print("checkRedirect_telegram " + text)
 
     if config.getCell('t_' + chatId) is not None:
+        print(f"{config.getCell('telegram_SendOnlyFromMainTopic')} {getattr(message.chat, 'is_forum', False)} {getattr(message, 'is_topic_message', False)}")
+
         if config.getCell('telegram_SendOnlyFromMainTopic') and \
                 getattr(message.chat, 'is_forum', False) and \
                 getattr(message, 'is_topic_message', False):

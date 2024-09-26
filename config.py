@@ -39,7 +39,7 @@ def initConfig():
     ########                                             ########
     #############################################################
 
-    setCell("vk_EnableStickers", True)  # Включить отправку стикеров из Telegram в ВК?
+    setCell("vk_EnableStickers", False)  # Включить отправку стикеров из Telegram в ВК?
 
     setCell("vk_album_id", 254179516)  # ID альбома, куда будут заливаться стикеры из тележки
     setCell("vk_detelestickers", True)  # Удалять загруженные стикеры с компьютера?

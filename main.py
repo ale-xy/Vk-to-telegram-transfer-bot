@@ -214,7 +214,7 @@ def checkEvents(msg, chatid):
 
     else:
         return None
-    transferMessagesToTelegram(chatid, None, mbody, None, None, None)
+    send_to_telegram(chatid, None, mbody, None, None)
     return 'NotNone'  # теперь точно не будет отсылать пустые сообщения
 
 
@@ -252,7 +252,7 @@ def getReplyMessage(msg, idd):
 #                                             
 #  Функции, принимающие и отправляющие сообщения ВК <==> Telegram
 
-def checkRedirect_vk(msg):
+def check_redirect_vk_to_telegram(msg):
     chatid = str(msg['conversation']['peer']['local_id'])
     print("checkRedirect_vk " + msg['last_message'].get('text'))
 
@@ -267,7 +267,7 @@ def checkRedirect_vk(msg):
         # Чтобы при событии не посылалось пустое сообщение
 
         if checkEvents(msg, chatid) is None:
-            transferMessagesToTelegram(chatid, userName, mbody, forwardMessage, replyMessage, messageId)
+            send_to_telegram(chatid, userName, mbody, forwardMessage, replyMessage)
 
         # Проверка на аттачменты, пересланные сообщения, видео...
         # Проверка сделана, чтобы исключить повтор картинки
@@ -289,7 +289,7 @@ def get_reply_vk(message_data):
         return None
 
 
-def transferMessageToVK(chatid, text, fromUser, attachment):
+def send_to_vk(chatid, text, fromUser, attachment):
     print("transferMessageToVK " + text)
 
     if config.getCell('telegram_SendName'):
@@ -334,10 +334,18 @@ def upload_photo_vk(photo):
     return f'photo{owner_id}_{photo_id}_{access_key}'
 
 
-def checkRedirect_telegram(chatid, text, fromUser, attachment):
+def check_redirect_telegram_to_vk(message, attachment):
+    chatId = str(message.chat.id)
+    text = message.text
+    fromUser = getUserTName(message.from_user)
+
     print("checkRedirect_telegram " + text)
 
-    if not config.getCell('t_' + chatid) is None:
+    if config.getCell('t_' + chatId) is not None:
+        if config.getCell('telegram_SendOnlyFromMainTopic') and message.chat.is_forum and message.is_topic_message:
+            print("Not main topic, skip")
+            return False
+
         if attachment is not None:
             print(f"download {attachment}")
             downloaded_file = module.bot.download_file(attachment)
@@ -345,7 +353,7 @@ def checkRedirect_telegram(chatid, text, fromUser, attachment):
             with open(attachment, 'wb') as new_file:
                 new_file.write(downloaded_file)
 
-        transferMessageToVK(chatid, text, fromUser, attachment)
+        send_to_vk(chatId, text, fromUser, attachment)
 
         if attachment is not None and os.path.exists(attachment):
             os.remove(attachment)
@@ -355,13 +363,15 @@ def checkRedirect_telegram(chatid, text, fromUser, attachment):
 
 # Посылаем простые сообщения в Telegram
 # Идея: сделать в будущем наклонные столбики, теперь главное не забыть
-def transferMessagesToTelegram(idd, userName, mbody, fwdList, replyText, msgId):
+def send_to_telegram(vk_chat_id, userName, mbody, fwdList, replyText):
     print("transferMessagesToTelegram " + mbody)
 
-    # Условие выполняется в случае какого-либо события
+    tg_id = config.getCell('vk_' + vk_chat_id)
+    tg_topic = config.getCell(f'topic_{tg_id}')
+
     if userName is None:
         if mbody:
-            module.bot.send_message(config.getCell('vk_' + idd), str(mbody))
+            module.bot.send_message(tg_id, str(mbody), message_thread_id=tg_topic)
         return False
 
     time = current_time()
@@ -369,23 +379,26 @@ def transferMessagesToTelegram(idd, userName, mbody, fwdList, replyText, msgId):
     timeText = f"<b>{userName}</b> <i>{time}</i>:"
     # niceText = str(time + ' | #msg' + msgId + ' | ' + userName + ': ' + mbody)
 
-    if not fwdList is None:
+    if fwdList is not None:
         forwardText = ''
         for f in fwdList:
             forwardText = forwardText + f"<blockquote><b>{f.get('userName')}</b>: {f.get('body')}</blockquote>\n"
 
-        module.bot.send_message(config.getCell('vk_' + idd),
+        module.bot.send_message(tg_id,
                                 f"{timeText}\n\n{mbody}\n\n{forwardText}",
+                                message_thread_id=tg_topic,
                                 parse_mode="HTML")
 
     else:
-        if not replyText is None:
-            module.bot.send_message(config.getCell('vk_' + idd),
+        if replyText is not None:
+            module.bot.send_message(tg_id,
                                     f"{timeText}\n\n{replyText}\n{mbody}",
+                                    message_thread_id=tg_topic,
                                     parse_mode="HTML")
         else:
-            module.bot.send_message(config.getCell('vk_' + idd),
+            module.bot.send_message(tg_id,
                                     f"{timeText}\n\n{mbody}",
+                                    message_thread_id=tg_topic,
                                     parse_mode="HTML")
 
 
@@ -516,7 +529,7 @@ def input_vk():
                 continue
             msg = rawMessages[0]['conversation']['peer']
             if last_message != int(rawMessages[0]['conversation'].get('last_message_id')):
-                if checkRedirect_vk(rawMessages[0]):
+                if check_redirect_vk_to_telegram(rawMessages[0]):
                     last_message = int(rawMessages[0]['conversation'].get('last_message_id'))
                 if config.getCell('vk_markAsReadEverything'):
                     module.vk.messages.markAsRead(messages_ids=msg['local_id'], peer_id=msg['id'])
@@ -544,24 +557,15 @@ def input_vk():
 
 def listener(messages):
     for m in messages:
-
-        print(m)
+        pprint.pp(m.json)
 
         if m.content_type == 'text':
-
-            print(m.from_user)
-            print(m.chat)
-            print(m.reply_to_message)
-            print(m.forum_topic_created)
-
-            print(m.json)
-
             # На команду 'Дай ID' кидает ID чата
             if m.text == 'Дай ID':
                 module.bot.send_message(m.chat.id, str(m.chat.id))
                 continue
 
-            checkRedirect_telegram(str(m.chat.id), str(m.text), getUserTName(m.from_user), None)
+            check_redirect_telegram_to_vk(m, None)
 
         elif m.content_type == 'sticker':
 
@@ -570,16 +574,16 @@ def listener(messages):
 
             print(f'sticker file {module.bot.get_file(m.sticker.file_id)}')
             filePath = module.bot.get_file(m.sticker.file_id).file_path
-            checkRedirect_telegram(str(m.chat.id), str(m.text), getUserTName(m.from_user), str(filePath))
+            check_redirect_telegram_to_vk(m, str(filePath))
 
         elif m.content_type == 'photo':
             print(f'photo file {module.bot.get_file(m.photo[-1].file_id)}')
             filePath = module.bot.get_file(m.photo[-1].file_id).file_path
-            checkRedirect_telegram(str(m.chat.id), str(m.caption), getUserTName(m.from_user), str(filePath))
+            check_redirect_telegram_to_vk(m, str(filePath))
 
         else:
             text = f"{m.caption}\nтут было {m.content_type}, но мы его пересылать не умеем"
-            checkRedirect_telegram(str(m.chat.id), str(text), getUserTName(m.from_user), None)
+            check_redirect_telegram_to_vk(m, None)
 
 
 def init_telegram():

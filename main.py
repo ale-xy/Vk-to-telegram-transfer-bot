@@ -342,11 +342,11 @@ def check_redirect_telegram_to_vk(message, attachment):
     print(f'reply {reply_name} {reply_text}')
 
     if reply_text is None:
-        text = message.text
+        text = str(message.text or '')
     else:
         text = f'>>>>>> {reply_name} <<\n{reply_text}\n>>>>>> \n{message.text}'
 
-    print("checkRedirect_telegram " + text)
+    print(f"checkRedirect_telegram {text}")
 
     if config.getCell('t_' + chatId) is not None:
         if config.getCell('telegram_SendOnlyFromMainTopic') and \
